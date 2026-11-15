@@ -1,0 +1,8 @@
+.ipynb_checkpoints/
+__pycache__/
+.DS_Store
+node_modules/
+dist/
+.env
+.env.local
+rayfin/.env

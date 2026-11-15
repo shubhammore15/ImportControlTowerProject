@@ -1,0 +1,91 @@
+// Import Control Tower - measures
+// Create a home table called _Measures in the semantic model and add these.
+// Relationships are listed in the README.
+
+// ---------- Sales and margin ----------
+Net Sales = SUM ( fact_sales[net_amount_gbp] )
+
+Landed COGS = SUM ( fact_sales[landed_cost_gbp] )
+
+Gross Margin = [Net Sales] - [Landed COGS]
+
+Gross Margin % = DIVIDE ( [Gross Margin], [Net Sales] )
+
+Net Sales PY = CALCULATE ( [Net Sales], SAMEPERIODLASTYEAR ( dim_date[date] ) )
+
+Net Sales YoY % = DIVIDE ( [Net Sales] - [Net Sales PY], [Net Sales PY] )
+
+// ---------- Supplier reliability (arrived shipments only) ----------
+Shipments Arrived = CALCULATE ( COUNTROWS ( fact_shipment ), fact_shipment[status] = "Arrived" )
+
+OTIF % =
+DIVIDE (
+    CALCULATE ( COUNTROWS ( fact_shipment ), fact_shipment[is_otif] = TRUE () ),
+    [Shipments Arrived]
+)
+
+On-Time % =
+DIVIDE (
+    CALCULATE ( COUNTROWS ( fact_shipment ), fact_shipment[is_on_time] = TRUE () ),
+    [Shipments Arrived]
+)
+
+Fill Rate % =
+CALCULATE (
+    DIVIDE ( SUM ( fact_shipment[qty_received] ), SUM ( fact_shipment[qty_ordered] ) ),
+    fact_shipment[status] = "Arrived"
+)
+
+Avg Delay Days = CALCULATE ( AVERAGE ( fact_shipment[delay_days] ), fact_shipment[status] = "Arrived" )
+
+Avg Lead Time Days = CALCULATE ( AVERAGE ( fact_shipment[lead_time_days] ), fact_shipment[status] = "Arrived" )
+
+In Transit Value = CALCULATE ( SUMX ( fact_shipment, fact_shipment[qty_ordered] * fact_shipment[unit_cost] * fact_shipment[fx_rate_to_gbp] ), fact_shipment[status] = "In Transit" )
+
+// ---------- Landed cost ----------
+Goods Value = SUM ( fact_shipment[goods_value_gbp] )
+
+Freight + Duty = SUM ( fact_shipment[freight_cost_gbp] ) + SUM ( fact_shipment[duty_gbp] )
+
+Landed Cost Uplift % =
+CALCULATE ( DIVIDE ( [Freight + Duty], [Goods Value] ), fact_shipment[status] = "Arrived" )
+
+// Same measure by arrival month instead of PO month (inactive relationship)
+Landed Cost Uplift % (by arrival) =
+CALCULATE (
+    [Landed Cost Uplift %],
+    USERELATIONSHIP ( fact_shipment[arrival_date], dim_date[date] )
+)
+
+// ---------- Cash and reconciliation ----------
+Invoiced = SUM ( fact_invoice[invoice_amount_gbp] )
+
+Outstanding AR = SUM ( fact_invoice[outstanding_gbp] )
+
+Overdue AR = CALCULATE ( [Outstanding AR], fact_invoice[days_overdue] > 0 )
+
+Overdue % of AR = DIVIDE ( [Overdue AR], [Outstanding AR] )
+
+Avg Days to Pay = AVERAGE ( fact_invoice[days_to_pay] )
+
+// Amount-weighted, so one large late payer moves it more than many small ones
+Weighted Days to Pay =
+DIVIDE (
+    SUMX ( fact_invoice, fact_invoice[days_to_pay] * fact_invoice[paid_amount_gbp] ),
+    CALCULATE ( SUM ( fact_invoice[paid_amount_gbp] ), NOT ISBLANK ( fact_invoice[days_to_pay] ) )
+)
+
+Cash Received = SUM ( fact_payment[amount_gbp] )
+
+Unmatched Cash = CALCULATE ( [Cash Received], fact_payment[is_matched] = FALSE () )
+
+Auto-Match Rate % =
+DIVIDE (
+    CALCULATE ( COUNTROWS ( fact_payment ), fact_payment[is_matched] = TRUE () ),
+    COUNTROWS ( fact_payment )
+)
+
+Short-Paid Invoices = CALCULATE ( COUNTROWS ( fact_invoice ), fact_invoice[status] = "Short-paid" )
+
+// ---------- Data quality ----------
+Rejected Rows = COUNTROWS ( silver_dq_rejects )
