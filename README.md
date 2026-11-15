@@ -20,13 +20,21 @@ on top of it are all running in one Fabric workspace.
 `DashboardApp` is a Fabric App that queries `SM_ControlTower` live with DAX. It has four pages, with
 year and region filters and a light/dark toggle.
 
-| Overview | Sales & Margin |
-|---|---|
-| ![Overview page](docs/images/app-overview.png) | ![Sales and margin page](docs/images/app-sales-margin.png) |
+### Overview
 
-| Logistics & Suppliers | Cash & Receivables |
-|---|---|
-| ![Logistics and suppliers page](docs/images/app-logistics-suppliers.png) | ![Cash and receivables page](docs/images/app-cash-receivables.png) |
+![Overview page](docs/images/app-overview.png)
+
+### Sales & Margin
+
+![Sales and margin page](docs/images/app-sales-margin.png)
+
+### Logistics & Suppliers
+
+![Logistics and suppliers page](docs/images/app-logistics-suppliers.png)
+
+### Cash & Receivables
+
+![Cash and receivables page](docs/images/app-cash-receivables.png)
 
 ## Repository layout
 
