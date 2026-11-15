@@ -12,8 +12,21 @@ finance and operations teams ask every week:
 
 All data is synthetic. No real company's data is used.
 
-**Status:** the lakehouse pipeline and the Direct Lake semantic model are built and running in Fabric.
-A Fabric App (preview) front end on top of the semantic model is in progress.
+**Status:** the lakehouse pipeline, the Direct Lake semantic model and a Fabric App (preview) dashboard
+on top of it are all running in one Fabric workspace.
+
+## The app
+
+`DashboardApp` is a Fabric App that queries `SM_ControlTower` live with DAX. It has four pages, with
+year and region filters and a light/dark toggle.
+
+| Overview | Sales & Margin |
+|---|---|
+| ![Overview page](docs/images/app-overview.png) | ![Sales and margin page](docs/images/app-sales-margin.png) |
+
+| Logistics & Suppliers | Cash & Receivables |
+|---|---|
+| ![Logistics and suppliers page](docs/images/app-logistics-suppliers.png) | ![Cash and receivables page](docs/images/app-cash-receivables.png) |
 
 ## Repository layout
 
@@ -25,6 +38,7 @@ A Fabric App (preview) front end on top of the semantic model is in progress.
 | `notebooks/NB_03_Gold_Model.ipynb` | Star schema, landed cost, bank-to-invoice reconciliation |
 | `notebooks/NB_04_Semantic_Model.ipynb` | Direct Lake semantic model, relationships and measures as code |
 | `semantic_model/measures.dax` | The measures in plain DAX for reference |
+| `docs/images/` | Screenshots of the app and the semantic model |
 
 ## Architecture
 
@@ -43,7 +57,7 @@ flowchart LR
         GLD[("Gold<br/>star schema")]
     end
     SM["SM_ControlTower<br/>Direct Lake model"]
-    APP["Fabric App<br/>in progress"]
+    APP["DashboardApp<br/>Fabric App"]
     ERP --> LAND
     FWD --> LAND
     BANK --> LAND
@@ -107,7 +121,7 @@ flowchart TD
     E --> G
 ```
 
-Percentages are shares of the 17,494 bank lines in the test run.
+Percentages are shares of the 17,494 bank lines in a local test run.
 
 1. **Reference match** – a regex pulls the invoice number out of references such as `inv 123`,
    `INV_000123` or `Payment INV000123 thanks`.
@@ -119,17 +133,20 @@ Percentages are shares of the 17,494 bank lines in the test run.
 Matched receipts roll up to `fact_invoice`, which gives status (Paid, Short-paid, Open, Overdue),
 days to pay and an aging bucket per invoice.
 
-## Results from a test run
+## Results
 
-History from 1 Jan 2025 to 12 Nov 2026 (your figures will differ slightly with a different run date):
+Figures from the deployed app, history from 1 Jan 2025 to mid-Nov 2026:
 
 | Metric | Value |
 |---|---|
-| Invoice lines loaded / rejected | 68,060 / 269 |
-| Bank lines reconciled automatically | 96% (0 wrong matches when checked against the simulator's ground truth) |
+| Net sales | £36.76m |
 | Gross margin after landed cost | 43.9% |
-| Supplier OTIF range | 29% to 90% |
-| Freight + duty as % of goods value | 9% (Portugal) to 33% (China, storage) |
+| Supplier OTIF | 55.6% overall, with on-time at 61.1% and fill rate at 99.3% |
+| Freight + duty on top of goods value | 20.2% |
+| Outstanding receivables | £5.44m, of which 47.9% overdue |
+| Bank lines reconciled automatically | 96.2% |
+
+In a local test run against the simulator's ground truth, the reconciliation made 0 wrong matches.
 
 ## Run it yourself
 
@@ -158,6 +175,10 @@ erDiagram
     dim_supplier ||--o{ fact_shipment : supplier_id
     dim_product ||--o{ fact_shipment : sku
 ```
+
+### Semantic model in Fabric
+
+![SM_ControlTower model view](docs/images/semantic-model.png)
 
 ### Relationships (all many-to-one, single direction)
 
@@ -188,7 +209,6 @@ erDiagram
 
 ## Possible extensions
 
-- Fabric App dashboard on `SM_ControlTower` (in progress)
 - Time-phased landed cost (monthly weighted average) instead of one average per SKU
 - SCD Type 2 on customer credit terms
 - One bank payment settling several invoices
