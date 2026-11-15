@@ -22,19 +22,19 @@ year and region filters and a light/dark toggle.
 
 ### Overview
 
-![Overview page](docs/images/app-overview.png)
+![Overview page](docs/images/dashboard-overview.png)
 
 ### Sales & Margin
 
-![Sales and margin page](docs/images/app-sales-margin.png)
+![Sales and margin page](docs/images/dashboard-sales-margin.png)
 
 ### Logistics & Suppliers
 
-![Logistics and suppliers page](docs/images/app-logistics-suppliers.png)
+![Logistics and suppliers page](docs/images/dashboard-logistics-suppliers.png)
 
 ### Cash & Receivables
 
-![Cash and receivables page](docs/images/app-cash-receivables.png)
+![Cash and receivables page](docs/images/dashboard-cash-receivables.png)
 
 ## Repository layout
 
