@@ -30,15 +30,33 @@ A Fabric App (preview) front end on top of the semantic model is in progress.
 
 ```mermaid
 flowchart LR
-    G[NB_00 Generate<br/>ERP, forwarder, bank CSV drops] --> L[(Files/landing<br/>batch=YYYY-MM-DD)]
-    L --> B[NB_01 Bronze<br/>raw strings + lineage<br/>append-only]
-    B --> S[NB_02 Silver<br/>typed, de-duplicated<br/>validated, MERGE]
-    S --> Q[(silver_dq_rejects)]
-    S --> GM[NB_03 Gold<br/>star schema +<br/>reconciliation]
-    GM --> SM[NB_04 Direct Lake<br/>semantic model as code]
-    SM --> R[Fabric App<br/>in progress]
-    P[Data pipeline<br/>daily schedule] -.orchestrates.-> G & B & S & GM
+    subgraph SRC["NB_00 simulates three source systems"]
+        ERP["ERP<br/>purchase orders, invoices"]
+        FWD["Freight forwarder<br/>shipments"]
+        BANK["Bank feed<br/>receipts"]
+    end
+    subgraph LH["LH_ControlTower lakehouse"]
+        LAND[("Landing<br/>CSV per batch")]
+        BRZ[("Bronze<br/>raw strings")]
+        SLV[("Silver<br/>typed and validated")]
+        REJ[("DQ rejects")]
+        GLD[("Gold<br/>star schema")]
+    end
+    SM["SM_ControlTower<br/>Direct Lake model"]
+    APP["Fabric App<br/>in progress"]
+    ERP --> LAND
+    FWD --> LAND
+    BANK --> LAND
+    LAND -->|NB_01| BRZ
+    BRZ -->|NB_02| SLV
+    SLV -.-> REJ
+    SLV -->|NB_03| GLD
+    GLD -->|NB_04| SM
+    SM --> APP
 ```
+
+A data pipeline runs the notebooks in order.
+
 
 | Layer | Tables | Load pattern |
 |---|---|---|
@@ -64,7 +82,32 @@ the pipeline has to handle:
 | Late-arriving invoices | Picked up by batch watermark, not by business date |
 | Free-text bank references, payer name variants, short payments, non-customer receipts | Two-pass reconciliation in gold |
 
+### How a batch moves through silver
+
+```mermaid
+flowchart TD
+    A["New bronze batches<br/>newer than the watermark"] --> B["Standardise<br/>trim, casing, two date formats, amounts"]
+    B --> C["Keep the latest row per business key"]
+    C --> D{"Passes every rule?"}
+    D -->|No| E[("silver_dq_rejects<br/>reason and full payload")]
+    D -->|Yes| F["Delta MERGE into the silver table"]
+    F --> G["Advance the watermark"]
+```
+
 ## Reconciliation logic
+
+```mermaid
+flowchart TD
+    A["Bank line"] --> B{"Invoice number found<br/>in the reference?"}
+    B -->|"Yes (72%)"| C["Matched by reference"]
+    B -->|No| D{"Payer name matches a customer and<br/>amount equals exactly one open invoice?"}
+    D -->|"Yes (24%)"| E["Matched by name and amount"]
+    D -->|"No (4%)"| F["Unmatched<br/>left for review"]
+    C --> G["fact_invoice<br/>Paid, Short-paid, Open or Overdue"]
+    E --> G
+```
+
+Percentages are shares of the 17,494 bank lines in the test run.
 
 1. **Reference match** – a regex pulls the invoice number out of references such as `inv 123`,
    `INV_000123` or `Payment INV000123 thanks`.
@@ -99,6 +142,22 @@ History from 1 Jan 2025 to 12 Nov 2026 (your figures will differ slightly with a
    and schedule it daily.
 5. Run `NB_04_Semantic_Model`. It creates the Direct Lake model `SM_ControlTower` with
    Semantic Link Labs, adds the relationships and measures below, and smoke-tests it with a DAX query.
+
+### Star schema
+
+```mermaid
+erDiagram
+    dim_date ||--o{ fact_sales : invoice_date
+    dim_customer ||--o{ fact_sales : customer_id
+    dim_product ||--o{ fact_sales : sku
+    dim_date ||--o{ fact_invoice : invoice_date
+    dim_customer ||--o{ fact_invoice : customer_id
+    dim_date ||--o{ fact_payment : txn_date
+    dim_customer ||--o{ fact_payment : customer_id
+    dim_date ||--o{ fact_shipment : po_date
+    dim_supplier ||--o{ fact_shipment : supplier_id
+    dim_product ||--o{ fact_shipment : sku
+```
 
 ### Relationships (all many-to-one, single direction)
 
