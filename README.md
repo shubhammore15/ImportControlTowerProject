@@ -170,20 +170,6 @@ In a local test run against the simulator's ground truth, the reconciliation mad
 
 ### Star schema
 
-```mermaid
-erDiagram
-    dim_date ||--o{ fact_sales : invoice_date
-    dim_customer ||--o{ fact_sales : customer_id
-    dim_product ||--o{ fact_sales : sku
-    dim_date ||--o{ fact_invoice : invoice_date
-    dim_customer ||--o{ fact_invoice : customer_id
-    dim_date ||--o{ fact_payment : txn_date
-    dim_customer ||--o{ fact_payment : customer_id
-    dim_date ||--o{ fact_shipment : po_date
-    dim_supplier ||--o{ fact_shipment : supplier_id
-    dim_product ||--o{ fact_shipment : sku
-```
-
 ### Semantic model in Fabric
 
 ![SM_ControlTower model view](docs/images/semantic-model.png)
